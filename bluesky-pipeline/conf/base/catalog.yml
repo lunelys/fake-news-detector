@@ -1,0 +1,8 @@
+# We define Kedro datasets for MongoDB. We’ll use MemoryDataset as intermediate for raw posts.
+raw_posts:
+  type: MemoryDataset
+
+clean_posts:
+  type: MemoryDataset
+
+# => to see the cleaned posts in memory. Can then inspect them in a notebook etc AND THEEEN add a node to save them back to MongoDB once we’re happy with the cleaning steps.

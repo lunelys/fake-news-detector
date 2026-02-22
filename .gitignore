@@ -1,0 +1,32 @@
+# Stuff
+airflow/logs/
+.idea/
+token.json
+src/token.json
+
+# Secrets
+.env
+bluesky-pipeline/conf/base/parameters_nlp_cleaning.yml
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.swp
+
+# Virtual environment
+.venv/
+env/
+venv/
+
+# Logs
+logs/
+*.log
+
+# Kedro cache / outputs
+.kedro/
+
+# OS files
+.DS_Store
+Thumbs.db
