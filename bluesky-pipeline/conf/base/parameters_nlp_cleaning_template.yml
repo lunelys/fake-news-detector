@@ -1,0 +1,14 @@
+# Configuration file for NLP cleaning pipeline : rename to parameters_nlp_cleaning.yml and fill in the MONGO_URI before running the pipeline
+MONGO_URI: "YOUR_MONGO_URI_HERE"
+DB_NAME: bluesky
+
+# List of raw collections to merge
+RAW_COLLECTIONS:
+  - climate
+  - news
+  - ukraine
+  - verified_news
+  - science
+
+# Name of the cleaned collection
+CLEAN_COLLECTION: "bluesky_posts_cleaned"

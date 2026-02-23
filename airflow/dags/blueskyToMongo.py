@@ -1,7 +1,7 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from datetime import datetime, timedelta
-from insertToMongo import main
+from blueskyToMongoBackfill import main
 
 default_args = {
     'owner': 'lunelys',
@@ -12,9 +12,9 @@ default_args = {
 with DAG(
     dag_id='bluesky_to_mongo',
     default_args=default_args,
-    description='Récupère les posts Bluesky et les insère dans MongoDB',
-    schedule='0 * * * *',  # Toutes les heures
-    start_date=datetime(2026, 1, 1), # Date dans le passé, sinon le DAG ne se lance pas
+    description='Fetch Bluesky posts and insert them into MongoDB',
+    schedule='0 * * * *',  # Every hour
+    start_date=datetime(2026, 1, 1),  # in the past to trigger immediately on deployment
     catchup=False,
 ) as dag:
 

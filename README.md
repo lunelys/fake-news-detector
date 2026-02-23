@@ -1,4 +1,8 @@
 # Projet_d_etude_G7
+Before running, make sure you have 1. filled with your own secret variables and 2. renamed correctly the following files:
+- parameters_nlp_cleaning_template.yml
+- .env_template in the root of the project
+
 
 ## Documentation
 
