@@ -13,24 +13,24 @@ MONGO_URI = os.getenv("MONGO_URL")
 DB_NAME = os.getenv("DATABASE_NAME")
 
 SEARCH_QUERIES = {
-    "science": "science OR research",
-    "ukraine": "Ukraine OR Ukrainian OR war",
-    "news": "news",
-    "climate": "climate OR global warming"
+    "science": "study",
+    "ukraine": "conflict",
+    "news": "breaking",
+    "climate": "greenhouse effect"
 }
 """
 SEARCH_QUERIES_FR = {  # with some English because French returns very few results anyways...
     "science": "sciences OR recherche OR scientifique OR scientifiques OR étude OR études",
     "ukraine": "Ukraine OR ukrainien OR guerre OR conflit OR invasion OR war",
     "climate": "climat OR réchauffement climatique OR changement climatique or climate",
-    "news": "news" 
+    "news": "news OR actus OR infos" 
 }
 """
-SEARCH_QUERIES_FR = {  # with some English because French returns very few results anyways...
-    "science": "sciences",
-    "ukraine": "Ukraine",
-    "climate": "réchauffement climatique",
-    "news": "news" 
+SEARCH_QUERIES_FR = {
+    "science": "recherche",
+    "ukraine": "guerre",
+    "climate": "changement climatique",
+    "news": "actualités" 
 }
 
 MAX_PAGES_PER_RUN = 5
@@ -174,6 +174,7 @@ def main():
         inserted = insert_posts(total_posts, collection_name)
         total_inserted += inserted
         print(f"[{collection_name}] Cursor(s) updated.\n")
+
 
     # ---------- VERIFIED NEWS ----------
     feed_collection_name = "verified_news"

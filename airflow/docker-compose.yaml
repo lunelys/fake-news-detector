@@ -341,5 +341,19 @@ services:
       airflow-init:
         condition: service_completed_successfully
 
+  postgres_vector:
+    image: pgvector/pgvector:pg16
+    container_name: pgvector_db
+    restart: always
+    environment:
+      POSTGRES_USER: kedro
+      POSTGRES_PASSWORD: kedro
+      POSTGRES_DB: fake_news
+    ports:
+      - "5433:5432"  # to not conflict with any local PostgreSQL installation
+    volumes:
+      - pgvector_data:/var/lib/postgresql/data
+
 volumes:
   postgres-db-volume:
+  pgvector_data:
