@@ -1,4 +1,4 @@
-# Projet Thumalien - Documentation Technique (Version Markdown)
+# Projet Thumalien - Documentation Technique
 
 This document explains what the project does, how it works, and why each major design choice exists. It also maps the current implementation to the requirements from the cahier des charges and highlights what remains to complete for the MVP.
 
