@@ -6,7 +6,6 @@ src/token.json
 
 # Secrets
 .env
-bluesky-pipeline/conf/base/parameters_nlp_cleaning.yml
 
 # Python
 __pycache__/

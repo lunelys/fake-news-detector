@@ -89,7 +89,7 @@ def search_posts_backfill(
     return all_posts, cursor
 
 
-def get_verified_news_feed(token, limit_per_page=100, max_pages=1, start_cursor=None, sleep_sec=0.5):
+def get_verified_news_feed(token, limit_per_page=100, max_pages=1, start_cursor=None, sleep_sec=0.5, use_cursor: bool = False):
     """
     Fetch latest posts from 'Verified News'.
     Only 1 page per run; cursor ignored to always get most recent posts.
@@ -104,6 +104,8 @@ def get_verified_news_feed(token, limit_per_page=100, max_pages=1, start_cursor=
     headers["Accept-Language"] = "en,fr"
 
     params = {"feed": feed_uri, "limit": limit_per_page}
+    if use_cursor and start_cursor:
+        params["cursor"] = start_cursor
 
     r = requests.get(f"{API_URL}/app.bsky.feed.getFeed", headers=headers, params=params)
 
@@ -127,4 +129,4 @@ def get_verified_news_feed(token, limit_per_page=100, max_pages=1, start_cursor=
         all_posts.append(post_obj)
 
     print(f"[FEED] Finished 'Verified News'. Total fetched: {len(all_posts)}")
-    return all_posts, None
+    return all_posts, data.get("cursor") if use_cursor else None

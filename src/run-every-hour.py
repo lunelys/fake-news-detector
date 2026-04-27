@@ -7,6 +7,7 @@ while True:
     print("\n----------------------------------------") 
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Running Bluesky collector...") 
     print("----------------------------------------")
-    subprocess.run([sys.executable, "src/blueskyToMongoBackfill.py"])
+    time.sleep(2000)
+    subprocess.run([sys.executable, "src/authorFeedToMongo.py"])
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Done. Sleeping for 1 hour.")
     time.sleep(3600)

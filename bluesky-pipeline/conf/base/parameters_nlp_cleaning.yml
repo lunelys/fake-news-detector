@@ -1,0 +1,53 @@
+# Keep secrets out of this tracked file.
+# Put real values in conf/local/parameters_nlp_cleaning.yml instead.
+MONGO_URI: ""
+DB_NAME: "bluesky"
+
+# List of raw collections to merge: verified_news to add later
+RAW_COLLECTIONS:
+  - climate
+  - news
+  - ukraine
+  - science
+  - verified_news
+
+# Sources treated as "credible" for weak supervision
+VERIFIED_SOURCES:
+  - verified_news
+
+# Name of the cleaned collection
+CLEAN_COLLECTION: "bluesky_posts_cleaned"
+
+# POSTGRES connection parameters
+# conf/base/parameters_nlp_cleaning.yml
+POSTGRES_URI: ""
+
+# Vectorizer parameters
+VECTORIZER_MAX_FEATURES: 5000
+VECTORIZER_MIN_DF: 2
+VECTORIZER_NGRAM_RANGE: [1, 2]
+VECTORIZER_USE_STOPWORDS: true
+VECTORIZER_CUSTOM_STOPWORDS: ["rt", "via", "amp"]
+
+# Clustering
+N_CLUSTERS: 8
+CLUSTER_BY: "label_lang"
+
+# Explainability (top-N terms per class)
+EXPLAIN_TOP_N: 15
+
+# Alerting
+ALERT_THRESHOLD: 0.7
+
+# Emotion model
+EMOTION_USE_TRANSFORMER: false
+EMOTION_MODEL_NAME: "cardiffnlp/twitter-xlm-roberta-base-emotion"
+EMOTION_TOP_K: 3
+
+# Transformer classifier (optional)
+ENABLE_TRANSFORMER: false
+TRANSFORMER_MODEL_NAME: "cardiffnlp/twitter-xlm-roberta-base"
+TRANSFORMER_OUTPUT_DIR: "data/06_models/transformer"
+TRANSFORMER_MAX_LENGTH: 128
+TRANSFORMER_EPOCHS: 1
+TRANSFORMER_BATCH_SIZE: 8

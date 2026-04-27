@@ -1,0 +1,31 @@
+{
+  "max_docs_per_collection": 35000,
+  "data_retention_days": 0,
+  "collection_caps": {
+    "news": 15000,
+    "climate": 15000,
+    "ukraine": 15000,
+    "science": 15000,
+    "verified_news": 60000
+  },
+  "clean_collection": "bluesky_posts_cleaned",
+  "alert_threshold": 0.7,
+  "verified_handles": [
+    "theguardian.com",
+    "lemonde.fr",
+    "franceinfo.fr",
+    "liberation.fr",
+    "mediapart.fr",
+    "reuters.com",
+    "nytimes.com",
+    "wsj.com",
+    "forbes.com",
+    "bbcnewsnight.bsky.social",
+    "en.afp.com",
+    "afp.com"
+  ],
+  "verified_author_limit_per_page": 50,
+  "verified_author_max_pages_per_run": 1,
+  "langs_filter": ["en", "fr"],
+  "verified_collection": "verified_news"
+}
