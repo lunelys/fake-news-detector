@@ -1,6 +1,6 @@
-# Projet Thumalien - Detection de Fake News sur Bluesky
+# Credibility Analyzer for Bluesky Posts
 
-This repository is the MVP for the Mastère 1 Data & IA project "Thumalien". It collects Bluesky posts, stores them in MongoDB, cleans and enriches them with NLP, trains baseline fake-news/credibility models, exposes predictions through an API, displays outputs in Streamlit, and tracks energy consumption with CodeCarbon.
+This repository is for the Mastère 1 Data & IA project "Thumalien". It collects Bluesky posts, stores them in MongoDB, cleans and enriches them with NLP, trains baseline fake-news/credibility models, exposes predictions through an API, displays outputs in Streamlit, and tracks energy consumption with CodeCarbon.
 
 The project is designed around the cahier des charges:
 
