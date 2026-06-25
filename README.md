@@ -167,12 +167,12 @@ Why `verified_news` is bigger: the four topic collections are treated as the bro
 
 ## 4. Labels and Data Quality
 
-The project does not yet have a perfect manually fact-checked fake-news dataset. Instead, the MVP uses weak supervision:
+The project does not yet have a perfect manually fact-checked fake-news dataset. Instead, this demo uses weak supervision:
 
 - `verified_news` -> `credible`
 - `science`, `ukraine`, `news`, `climate` -> `unverified`
 
-This is good enough for a demonstrable MVP and for explaining the methodology, but it should be described honestly as a curated credible reference set, not as absolute ground truth.
+This is good enough for a demonstrable demo and for explaining the methodology, but it should be described honestly as a curated credible reference set, not as absolute ground truth.
 
 Recommended future improvement: add manual annotations or an external fact-checking dataset with explicit `fake`, `misleading`, `credible`, and `uncertain` labels.
 
