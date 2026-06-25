@@ -60,7 +60,7 @@ source_dir = "src"
 [tool.pytest.ini_options]
 addopts = """
 --cov-report term-missing \
---cov src/bluesky_pipeline -ra"""
+--cov=bluesky_pipeline -ra"""
 
 [tool.coverage.report]
 fail_under = 0

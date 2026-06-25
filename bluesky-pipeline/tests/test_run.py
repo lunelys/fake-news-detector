@@ -13,8 +13,12 @@ from kedro.framework.startup import bootstrap_project
 # functionality
 
 class TestKedroRun:
-    def test_kedro_run(self):
-        bootstrap_project(Path.cwd())
+    def test_kedro_project_bootstraps(self):
+        project_path = Path(__file__).resolve().parents[1]
+        metadata = bootstrap_project(project_path)
+        import bluesky_pipeline
 
-        with KedroSession.create(project_path=Path.cwd()) as session:
-            assert session.run() is not None
+        with KedroSession.create(project_path=project_path) as session:
+            assert metadata.package_name == "bluesky_pipeline"
+            assert bluesky_pipeline.__name__ == "bluesky_pipeline"
+            assert session.load_context().project_path == project_path

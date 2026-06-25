@@ -6,6 +6,9 @@ src/token.json
 
 # Secrets
 .env
+.env.*
+!.env.example
+.streamlit/secrets.toml
 
 # Python
 __pycache__/
@@ -29,3 +32,6 @@ logs/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Our project stuff, private
+Project follow-up/

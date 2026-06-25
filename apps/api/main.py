@@ -46,7 +46,7 @@ app = FastAPI(title="Bluesky Fake News API", version="1.0.0")
 
 
 def _project_root() -> str:
-    return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 
 def _model_dir() -> str:
@@ -87,10 +87,17 @@ def _explain_text(vectorizer, classifier, label_encoder, clean: str, top_n: int 
         coefs = np.vstack([-coefs[0], coefs[0]])
 
     pred_index = int(classifier.predict(X)[0])
-    class_coefs = coefs[pred_index]
-    contributions = class_coefs * X.toarray()[0]
-    top_indices = np.argsort(contributions)[::-1][:top_n]
-    return [feature_names[i] for i in top_indices if contributions[i] > 0]
+    row = X.getrow(0)
+    contributions = coefs[pred_index, row.indices] * row.data
+    if not contributions.size:
+        return []
+
+    top_local_indices = np.argsort(contributions)[::-1][:top_n]
+    return [
+        feature_names[row.indices[i]]
+        for i in top_local_indices
+        if contributions[i] > 0
+    ]
 
 
 def _sentiment(text: str, lang: Optional[str]) -> float:
@@ -108,7 +115,9 @@ def _emotion_scores(text: str) -> tuple[dict, str]:
     try:
         from nrclex import NRCLex
         scores = NRCLex(text).affect_frequencies or {}
-        dominant = max(scores, key=scores.get) if scores else "unknown"
+        if not scores or max(scores.values()) <= 0:
+            return scores, "unknown"
+        dominant = max(scores, key=scores.get)
         return scores, dominant
     except Exception:
         return {}, "unknown"

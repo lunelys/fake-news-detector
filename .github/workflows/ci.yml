@@ -30,4 +30,4 @@ jobs:
 
       - name: Tests (if present)
         run: |
-          if [ -d "bluesky-pipeline/tests" ]; then pytest bluesky-pipeline/tests -q; else echo "No tests to run."; fi
+          if [ -d "bluesky-pipeline/tests" ]; then cd bluesky-pipeline && pytest tests -q; else echo "No tests to run."; fi

@@ -2,43 +2,49 @@ from kedro.pipeline import Pipeline, node
 from . import nodes
 
 
+def _base_preprocessing_nodes() -> list:
+    return [
+        node(
+            func=nodes.load_raw_posts,
+            inputs=dict(
+                mongo_uri="params:MONGO_URI",
+                db_name="params:DB_NAME",
+                raw_collections="params:RAW_COLLECTIONS",
+            ),
+            outputs="raw_posts",
+            name="load_raw_posts_node",
+        ),
+        node(
+            func=nodes.clean_text_node,
+            inputs="raw_posts",
+            outputs="clean_posts",
+            name="clean_text_node",
+        ),
+        node(
+            func=nodes.tokenize_and_lemmatize,
+            inputs="clean_posts",
+            outputs="tokenized_posts",
+            name="tokenize_and_lemmatize_node",
+        ),
+        node(
+            func=nodes.remove_duplicates,
+            inputs="tokenized_posts",
+            outputs="unique_posts",
+            name="remove_duplicates_node",
+        ),
+        node(
+            func=nodes.derive_credibility_labels,
+            inputs=["unique_posts", "params:VERIFIED_SOURCES"],
+            outputs="credibility_labels",
+            name="derive_credibility_labels_node",
+        ),
+    ]
+
+
 def create_pipeline(**kwargs):
     return Pipeline(
-        [
-            node(
-                func=nodes.load_raw_posts,
-                inputs=dict(
-                    mongo_uri="params:MONGO_URI",
-                    db_name="params:DB_NAME",
-                    raw_collections="params:RAW_COLLECTIONS",
-                ),
-                outputs="raw_posts",
-                name="load_raw_posts_node",
-            ),
-            node(
-                func=nodes.clean_text_node,
-                inputs="raw_posts",
-                outputs="clean_posts",
-                name="clean_text_node",
-            ),
-            node(
-                func=nodes.tokenize_and_lemmatize,
-                inputs="clean_posts",
-                outputs="tokenized_posts",
-                name="tokenize_and_lemmatize_node",
-            ),
-            node(
-                func=nodes.remove_duplicates,
-                inputs="tokenized_posts",
-                outputs="unique_posts",
-                name="remove_duplicates_node",
-            ),
-            node(
-                func=nodes.derive_credibility_labels,
-                inputs=["unique_posts", "params:VERIFIED_SOURCES"],
-                outputs="credibility_labels",
-                name="derive_credibility_labels_node",
-            ),
+        _base_preprocessing_nodes()
+        + [
             node(
                 func=nodes.vectorize_posts,
                 inputs=dict(
@@ -191,6 +197,78 @@ def create_pipeline(**kwargs):
                 inputs=["vectorizer", "kmeans_model", "classifier_model", "label_encoder", "calibrated_classifier"],
                 outputs=None,
                 name="save_models_node",
+            ),
+        ]
+    )
+
+
+def create_scoring_pipeline(**kwargs):
+    """
+    Fast routine pipeline.
+
+    It reuses models saved by the full training pipeline and only scores posts
+    that are not already complete in the clean MongoDB collection.
+    """
+    return Pipeline(
+        _base_preprocessing_nodes()
+        + [
+            node(
+                func=nodes.filter_posts_for_incremental_scoring,
+                inputs=[
+                    "unique_posts",
+                    "credibility_labels",
+                    "params:MONGO_URI",
+                    "params:DB_NAME",
+                    "params:CLEAN_COLLECTION",
+                    "params:INCREMENTAL_REFRESH_EXISTING",
+                    "params:INCREMENTAL_LIMIT",
+                ],
+                outputs="posts_to_score",
+                name="filter_posts_for_incremental_scoring_node",
+            ),
+            node(
+                func=nodes.add_sentiment,
+                inputs="posts_to_score",
+                outputs="scoring_posts_with_sentiment",
+                name="scoring_add_sentiment_node",
+            ),
+            node(
+                func=nodes.add_emotions,
+                inputs=[
+                    "scoring_posts_with_sentiment",
+                    "params:EMOTION_USE_TRANSFORMER",
+                    "params:EMOTION_MODEL_NAME",
+                    "params:EMOTION_TOP_K",
+                ],
+                outputs="scoring_posts_with_emotions",
+                name="scoring_add_emotions_node",
+            ),
+            node(
+                func=nodes.load_saved_models,
+                inputs="params:MODEL_DIR",
+                outputs="model_bundle",
+                name="load_saved_models_node",
+            ),
+            node(
+                func=nodes.transform_posts_with_saved_vectorizer,
+                inputs=["scoring_posts_with_emotions", "model_bundle"],
+                outputs="scoring_X_vectors",
+                name="transform_posts_with_saved_vectorizer_node",
+            ),
+            node(
+                func=nodes.score_and_store_incremental_posts,
+                inputs=[
+                    "scoring_posts_with_emotions",
+                    "scoring_X_vectors",
+                    "model_bundle",
+                    "params:MONGO_URI",
+                    "params:DB_NAME",
+                    "params:CLEAN_COLLECTION",
+                    "params:EXPLAIN_TOP_N",
+                    "params:ALERT_THRESHOLD",
+                ],
+                outputs=None,
+                name="score_and_store_incremental_posts_node",
             ),
         ]
     )

@@ -39,6 +39,12 @@ EXPLAIN_TOP_N: 15
 # Alerting
 ALERT_THRESHOLD: 0.7
 
+# Optimized scoring-only pipeline
+# nlp_scoring reuses saved models and only scores documents missing model outputs.
+MODEL_DIR: "data/06_models"
+INCREMENTAL_REFRESH_EXISTING: false
+INCREMENTAL_LIMIT: 0
+
 # Emotion model
 EMOTION_USE_TRANSFORMER: false
 EMOTION_MODEL_NAME: "cardiffnlp/twitter-xlm-roberta-base-emotion"

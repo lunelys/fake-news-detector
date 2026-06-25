@@ -7,6 +7,7 @@ import numpy as np
 from langdetect import detect
 from sqlalchemy import create_engine, text
 from scipy.spatial.distance import jensenshannon
+from scipy.sparse import csr_matrix
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.cluster import KMeans
@@ -612,7 +613,7 @@ def store_cleaned_posts_to_mongo(posts: List[Dict], mongo_uri: str, db_name: str
         print("[Mongo] No posts to store.")
         return
 
-    docs = []
+    requests = []
     for post in posts:
         doc = {
             "uri": post.get("uri"),
@@ -631,17 +632,23 @@ def store_cleaned_posts_to_mongo(posts: List[Dict], mongo_uri: str, db_name: str
             "alert": post.get("alert"),
             "inserted_at": datetime.now(timezone.utc),
         }
-        docs.append(doc)
+        requests.append(
+            UpdateOne(
+                {"clean_text": doc["clean_text"]},
+                {
+                    "$set": doc,
+                    "$setOnInsert": {"created_at": datetime.now(timezone.utc)},
+                },
+                upsert=True,
+            )
+        )
 
-    inserted = 0
-    for doc in docs:
-        try:
-            collection.insert_one(doc)
-            inserted += 1
-        except Exception:
-            continue
-
-    print(f"[Mongo] Stored {inserted} cleaned posts in '{collection_name}'.")
+    if requests:
+        result = collection.bulk_write(requests, ordered=False)
+        print(
+            f"[Mongo] Upserted cleaned posts in '{collection_name}' "
+            f"(inserted={result.upserted_count}, modified={result.modified_count})."
+        )
 
 
 def store_explanations_to_mongo(
@@ -670,22 +677,30 @@ def store_explanations_to_mongo(
     if coefs.shape[0] == 1:
         coefs = np.vstack([-coefs[0], coefs[0]])
 
-    requests = []
     proba_model = calibrated_classifier or classifier
+    preds = classifier.predict(X)
+    proba = proba_model.predict_proba(X)
+    requests = []
 
     for idx, post in enumerate(posts):
         clean_text = post.get("clean_text")
         if not clean_text:
             continue
 
-        vec = X[idx].toarray()[0]
-        pred_index = int(classifier.predict(X[idx])[0])
-        contrib = coefs[pred_index] * vec
-        top_indices = np.argsort(contrib)[::-1][:top_n]
-        top_terms = [feature_names[i] for i in top_indices if contrib[i] > 0]
-        proba = proba_model.predict_proba(X[idx])[0]
+        pred_index = int(preds[idx])
+        row = X.getrow(idx)
+        contrib = coefs[pred_index, row.indices] * row.data
+        if contrib.size:
+            top_local_indices = np.argsort(contrib)[::-1][:top_n]
+            top_terms = [
+                feature_names[row.indices[i]]
+                for i in top_local_indices
+                if contrib[i] > 0
+            ]
+        else:
+            top_terms = []
         pred_label = label_encoder.inverse_transform([pred_index])[0]
-        credibility_score = float(np.max(proba))
+        credibility_score = float(np.max(proba[idx]))
         alert = credibility_score < alert_threshold
 
         requests.append(
@@ -710,6 +725,185 @@ def store_explanations_to_mongo(
     if requests:
         collection.bulk_write(requests, ordered=False)
         print("[Explainability] Per-post explanations stored in MongoDB.")
+
+
+def filter_posts_for_incremental_scoring(
+    posts: List[Dict],
+    _credibility_labels: List[str],
+    mongo_uri: str,
+    db_name: str,
+    collection_name: str,
+    refresh_existing: bool = False,
+    limit: int = 0,
+) -> List[Dict]:
+    """
+    Keep only posts that still need model scoring/explanations.
+
+    This is the fast path for routine runs: once a post already has a
+    predicted label and explanation in MongoDB, it is skipped.
+    """
+    if refresh_existing:
+        selected = posts
+    else:
+        client = MongoClient(mongo_uri)
+        collection = client[db_name][collection_name]
+        selected = []
+
+        for start in range(0, len(posts), 1000):
+            batch = posts[start:start + 1000]
+            texts = [p.get("clean_text") for p in batch if p.get("clean_text")]
+            existing = {
+                doc["clean_text"]: doc
+                for doc in collection.find(
+                    {"clean_text": {"$in": texts}},
+                    {"clean_text": 1, "predicted_label": 1, "explanation_text": 1},
+                )
+            }
+
+            for post in batch:
+                clean_text = post.get("clean_text")
+                if not clean_text:
+                    continue
+                current_doc = existing.get(clean_text)
+                if not current_doc or not current_doc.get("predicted_label") or not current_doc.get("explanation_text"):
+                    selected.append(post)
+
+    if limit and limit > 0:
+        selected = selected[:limit]
+
+    print(f"[Incremental scoring] Selected {len(selected)} post(s) out of {len(posts)}.")
+    return selected
+
+
+def load_saved_models(model_dir: str = "data/06_models") -> Dict:
+    """
+    Load previously trained artifacts for scoring-only runs.
+    """
+    bundle = {
+        "vectorizer": joblib.load(os.path.join(model_dir, "vectorizer.joblib")),
+        "classifier": joblib.load(os.path.join(model_dir, "classifier.joblib")),
+        "label_encoder": joblib.load(os.path.join(model_dir, "label_encoder.joblib")),
+    }
+
+    calibrated_path = os.path.join(model_dir, "calibrated_classifier.joblib")
+    bundle["calibrated_classifier"] = joblib.load(calibrated_path) if os.path.exists(calibrated_path) else None
+    print(f"[Models] Loaded saved models from {model_dir}.")
+    return bundle
+
+
+def transform_posts_with_saved_vectorizer(posts: List[Dict], model_bundle: Dict):
+    """
+    Transform posts with the saved TF-IDF vectorizer instead of fitting a new one.
+    """
+    if not posts:
+        n_features = len(model_bundle["vectorizer"].get_feature_names_out())
+        print("[Incremental scoring] No posts to transform.")
+        return csr_matrix((0, n_features))
+
+    texts = [post.get("clean_text", "") for post in posts]
+    X = model_bundle["vectorizer"].transform(texts)
+    print(f"[Incremental scoring] Transformed matrix shape: {X.shape}")
+    return X
+
+
+def score_and_store_incremental_posts(
+    posts: List[Dict],
+    X,
+    model_bundle: Dict,
+    mongo_uri: str,
+    db_name: str,
+    collection_name: str,
+    top_n: int = 10,
+    alert_threshold: float = 0.7,
+):
+    """
+    Score new posts and upsert complete dashboard-ready documents into MongoDB.
+    """
+    if not posts:
+        print("[Incremental scoring] No posts to score.")
+        return
+
+    classifier = model_bundle["classifier"]
+    label_encoder = model_bundle["label_encoder"]
+    vectorizer = model_bundle["vectorizer"]
+    proba_model = model_bundle.get("calibrated_classifier") or classifier
+
+    feature_names = vectorizer.get_feature_names_out()
+    coefs = classifier.coef_
+    if coefs.shape[0] == 1:
+        coefs = np.vstack([-coefs[0], coefs[0]])
+
+    preds = classifier.predict(X)
+    proba = proba_model.predict_proba(X)
+
+    collection = MongoClient(mongo_uri)[db_name][collection_name]
+    collection.create_index("clean_text", unique=True)
+
+    requests = []
+    now = datetime.now(timezone.utc)
+
+    for idx, post in enumerate(posts):
+        clean_text = post.get("clean_text")
+        if not clean_text:
+            continue
+
+        pred_index = int(preds[idx])
+        pred_label = label_encoder.inverse_transform([pred_index])[0]
+        credibility_score = float(np.max(proba[idx]))
+        alert = credibility_score < alert_threshold
+
+        row = X.getrow(idx)
+        contrib = coefs[pred_index, row.indices] * row.data
+        if contrib.size:
+            top_local_indices = np.argsort(contrib)[::-1][:top_n]
+            top_terms = [
+                feature_names[row.indices[i]]
+                for i in top_local_indices
+                if contrib[i] > 0
+            ]
+        else:
+            top_terms = []
+
+        explanation_text = (
+            f"This post is classified as '{pred_label}' with a credibility score "
+            f"of {credibility_score:.2f}. Dominant emotion: "
+            f"{post.get('dominant_emotion', 'unknown')}. "
+            f"Key terms: {', '.join(top_terms[:5]) if top_terms else 'none'}."
+        )
+
+        doc = {
+            "uri": post.get("uri"),
+            "source_label": post.get("source_label"),
+            "credibility_label": post.get("credibility_label", "unverified"),
+            "clean_text": clean_text,
+            "tokens": post.get("tokens", []),
+            "lang_detected": post.get("lang_detected", "unknown"),
+            "sentiment": post.get("sentiment", 0.0),
+            "emotion_scores": post.get("emotion_scores", {}),
+            "dominant_emotion": post.get("dominant_emotion", "unknown"),
+            "emotion_status": post.get("emotion_status"),
+            "explanation_terms": top_terms,
+            "explanation_text": explanation_text,
+            "credibility_score": credibility_score,
+            "predicted_label": pred_label,
+            "alert": alert,
+            "inserted_at": now,
+        }
+
+        requests.append(
+            UpdateOne(
+                {"clean_text": clean_text},
+                {"$set": doc, "$setOnInsert": {"created_at": now}},
+                upsert=True,
+            )
+        )
+
+    if requests:
+        result = collection.bulk_write(requests, ordered=False)
+        print(
+            f"[Incremental scoring] Stored scored posts "
+            f"(inserted={result.upserted_count}, modified={result.modified_count})."
+        )
 
 
 # ============================================================
