@@ -14,7 +14,8 @@ The project is designed around the cahier des charges:
 
 ```mermaid
 flowchart LR
-  A["Bluesky API"] --> B["Python collectors"]
+  B["Python collectors automated by Airflow DAG"]
+  A["Bluesky API"] --> B
   B --> C["MongoDB raw collections"]
   C --> D["Kedro full training pipeline"]
   C --> E["Kedro optimized scoring pipeline"]
@@ -22,10 +23,16 @@ flowchart LR
   F --> E
   D --> G["Postgres + pgvector"]
   D --> H["Reports and figures"]
+  D --> Q["CodeCarbon energy report"]
   E --> I["MongoDB bluesky_posts_cleaned"]
   I --> J["Streamlit dashboard"]
-  F --> K["FastAPI /predict"]
-  K --> L["Prometheus + Grafana"]
+  Q --> J
+  F --> K["FastAPI API"]
+  K --> P["/predict endpoint"]
+  P --> J
+  K --> L["/metrics endpoint"]
+  L --> J
+  L --> M["Prometheus + Grafana"]
 ```
 
 End-to-end operating flow:
@@ -264,7 +271,7 @@ Full pipeline nodes:
 - `build_user_facing_explanations`: creates readable explanation text.
 - `store_explanations_to_mongo`: stores top influential terms, score, label, and alert in MongoDB.
 - `save_classifier_explanations`: saves top terms per class.
-- `generate_reporting_figures`: creates lightweight charts in `data/08_reporting/figures`.
+- `generate_reporting_figures`: creates lightweight sentiment, emotion, and clustering charts in `data/08_reporting/figures`.
 - `train_transformer_model`: optional transformer fine-tuning.
 - `save_models`: persists vectorizer, classifier, label encoder, calibrated classifier, and KMeans.
 
@@ -410,6 +417,12 @@ How to read `Green IT`:
 - `cpu_energy`, `gpu_energy`, `ram_energy`, `energy_consumed`: kWh.
 - `ram_total_size`: GB.
 - `pue`: ratio.
+
+Reporting figures:
+
+- `sentiment_mean.png`: average sentiment per weak label.
+- `emotion_distribution.png`: distribution of dominant emotions per weak label.
+- `cluster_sizes_keywords.png`: KMeans cluster sizes with the main TF-IDF terms describing each cluster.
 
 Start monitoring:
 

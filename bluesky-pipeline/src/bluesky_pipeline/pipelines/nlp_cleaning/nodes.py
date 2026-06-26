@@ -1142,6 +1142,14 @@ def generate_reporting_figures(_posts: Optional[List[Dict]] = None):
 
     sentiment_files = sorted(glob.glob("data/08_reporting/sentiment_summary_*.json"))
     emotion_files = sorted(glob.glob("data/08_reporting/emotion_summary_*.json"))
+    cluster_files = sorted(
+        path for path in glob.glob("data/08_reporting/clusters_*.parquet")
+        if "clusters_by_group_" not in os.path.basename(path)
+    )
+    cluster_keyword_files = sorted(
+        path for path in glob.glob("data/08_reporting/cluster_keywords_*.json")
+        if "cluster_keywords_by_group_" not in os.path.basename(path)
+    )
 
     if sentiment_files:
         df_sent = pd.read_json(sentiment_files[-1])
@@ -1157,6 +1165,27 @@ def generate_reporting_figures(_posts: Optional[List[Dict]] = None):
         fig = ax.get_figure()
         fig.tight_layout()
         fig.savefig("data/08_reporting/figures/emotion_distribution.png")
+        plt.close(fig)
+
+    if cluster_files and cluster_keyword_files:
+        df_clusters = pd.read_parquet(cluster_files[-1])
+        with open(cluster_keyword_files[-1], "r", encoding="utf-8") as f:
+            cluster_keywords = json.load(f)
+
+        cluster_counts = df_clusters["cluster"].value_counts().sort_values()
+        labels = [
+            f"Cluster {cluster}: " + ", ".join(cluster_keywords.get(f"cluster_{cluster}", [])[:4])
+            for cluster in cluster_counts.index
+        ]
+
+        fig, ax = plt.subplots(figsize=(11, 6))
+        cluster_counts.plot(kind="barh", ax=ax, color="#3F09C8")
+        ax.set_title("Cluster sizes with dominant TF-IDF terms")
+        ax.set_xlabel("Number of posts")
+        ax.set_ylabel("Cluster and dominant terms")
+        ax.set_yticklabels(labels)
+        fig.tight_layout()
+        fig.savefig("data/08_reporting/figures/cluster_sizes_keywords.png")
         plt.close(fig)
 
     print("[Reporting] Figures generated.")

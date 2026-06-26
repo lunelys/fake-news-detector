@@ -959,7 +959,9 @@ def render_monitoring() -> None:
             )
         with col3:
             status_card("Metrics source", "/metrics", "Prometheus text exposition.", "blue")
-
+        
+        st.markdown("<div style='height: 1rem'></div>", unsafe_allow_html=True)
+        
         with st.expander("Raw Prometheus metrics"):
             st.code(metrics, language="text")
     except requests.RequestException as exc:
@@ -995,13 +997,15 @@ def render_green_it() -> None:
     with col4:
         status_card("Emissions rate", f"{latest.get('emissions_rate', 0):.8f}", "kg CO2eq/s.", "green")
 
+    st.markdown("<div style='height: 1rem'></div>", unsafe_allow_html=True)
+
     display_columns = [column for column in ENERGY_UNITS if column in energy.columns]
     display = energy[display_columns].tail(10).copy()
     display.columns = [
         f"{column} ({ENERGY_UNITS[column]})"
         for column in display.columns
     ]
-    st.dataframe(display, use_container_width=True)
+    st.dataframe(display, use_container_width=True, height=120)
 
 
 inject_styles()
